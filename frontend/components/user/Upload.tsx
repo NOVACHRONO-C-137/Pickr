@@ -1,6 +1,6 @@
 "use client";
 import { PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
-import { UploadImage } from "@/components/UploadImage";
+import { UploadImage } from "@/components/user/UploadImage";
 import { BACKEND_URL } from "@/utils";
 import axios from "axios";
 import { useRouter } from "next/navigation";

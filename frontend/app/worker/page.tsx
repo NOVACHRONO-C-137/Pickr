@@ -1,5 +1,5 @@
-import { Appbar } from "@/components/Appbar";
-import { NextTask } from "@/components/NextTask";
+import { Appbar } from "@/components/worker/Appbar";
+import { NextTask } from "@/components/worker/NextTask";
 import Image from "next/image";
 
 export default function Home() {
