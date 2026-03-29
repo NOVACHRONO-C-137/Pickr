@@ -12,7 +12,7 @@ import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 const connection = new Connection(process.env.RPC_URL ?? "");
 
 const PARENT_WALLET_ADDRESS = "2KeovpYvrgpziaDsq8nbNMP4mc48VNBVXb5arbqrg9Cq";
-    
+
 const DEFAULT_TITLE = "Select the most clickable thumbnail";
 
 const s3Client = new S3Client({
@@ -30,11 +30,11 @@ const prismaClient = new PrismaClient();
 
 prismaClient.$transaction(
     async (prisma) => {
-      // Code running in a transaction...
+        // Code running in a transaction...
     },
     {
-      maxWait: 5000, // default: 2000
-      timeout: 10000, // default: 5000
+        maxWait: 5000, // default: 2000
+        timeout: 10000, // default: 5000
     }
 )
 
@@ -182,7 +182,7 @@ router.get("/presignedUrl", authMiddleware, async (req, res) => {
         Bucket: 'hkirat-cms',
         Key: `fiver/${userId}/${Math.random()}/image.jpg`,
         Conditions: [
-          ['content-length-range', 0, 5 * 1024 * 1024] // 5 MB max
+            ['content-length-range', 0, 5 * 1024 * 1024] // 5 MB max
         ],
         Expires: 3600
     })
@@ -191,10 +191,10 @@ router.get("/presignedUrl", authMiddleware, async (req, res) => {
         preSignedUrl: url,
         fields
     })
-    
-})
 
-router.post("/signin", async(req, res) => {
+})
+//signing
+router.post("/signin", async (req, res) => {
     const { publicKey, signature } = req.body;
     const message = new TextEncoder().encode("Sign into mechanical turks");
 
@@ -210,7 +210,7 @@ router.post("/signin", async(req, res) => {
             message: "Incorrect signature"
         })
     }
-
+    // extraction
     const existingUser = await prismaClient.user.findFirst({
         where: {
             address: publicKey
