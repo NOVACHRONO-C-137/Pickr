@@ -1,13 +1,14 @@
 import nacl from "tweetnacl";
 import { PrismaClient } from "@prisma/client";
-import { Router } from "express";
-import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+import { Router, Request, Response } from "express";
+import { v2 as cloudinary } from "cloudinary";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET, TOTAL_DECIMALS } from "../config";
 import { authMiddleware } from "../middleware";
-import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
 import { createTaskInput } from "../types";
-import { Connection, PublicKey, Transaction } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 
 const connection = new Connection(process.env.RPC_URL ?? "");
 
@@ -15,17 +16,17 @@ const PARENT_WALLET_ADDRESS = "2KeovpYvrgpziaDsq8nbNMP4mc48VNBVXb5arbqrg9Cq";
 
 const DEFAULT_TITLE = "Select the most clickable thumbnail";
 
-const s3Client = new S3Client({
-    credentials: {
-        accessKeyId: process.env.ACCESS_KEY_ID ?? "",
-        secretAccessKey: process.env.ACCESS_SECRET ?? "",
-    },
-    region: "us-east-1"
-})
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME ?? "",
+    api_key: process.env.CLOUDINARY_API_KEY ?? "",
+    api_secret: process.env.CLOUDINARY_API_SECRET ?? "",
+});
 
 const router = Router();
 
-const prismaClient = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prismaClient = new PrismaClient({ adapter });
 
 
 prismaClient.$transaction(
@@ -38,7 +39,7 @@ prismaClient.$transaction(
     }
 )
 
-router.get("/task", authMiddleware, async (req, res) => {
+router.get("/task", authMiddleware, async (req: Request, res: Response) => {
     // @ts-ignore
     const taskId: string = req.query.taskId;
     // @ts-ignore
@@ -77,7 +78,7 @@ router.get("/task", authMiddleware, async (req, res) => {
         }
     }> = {};
 
-    taskDetails.options.forEach(option => {
+    taskDetails.options.forEach((option: { id: number; image_url: string }) => {
         result[option.id] = {
             count: 0,
             option: {
@@ -86,7 +87,7 @@ router.get("/task", authMiddleware, async (req, res) => {
         }
     })
 
-    responses.forEach(r => {
+    responses.forEach((r: { option_id: number }) => {
         result[r.option_id].count++;
     });
 
@@ -97,7 +98,7 @@ router.get("/task", authMiddleware, async (req, res) => {
 
 })
 
-router.post("/task", authMiddleware, async (req, res) => {
+router.post("/task", authMiddleware, async (req: Request, res: Response) => {
     //@ts-ignore
     const userId = req.userId
     // validate the inputs from the user;
@@ -174,27 +175,29 @@ router.post("/task", authMiddleware, async (req, res) => {
 
 })
 
-router.get("/presignedUrl", authMiddleware, async (req, res) => {
+router.get("/presignedUrl", authMiddleware, async (req: Request, res: Response) => {
     // @ts-ignore
     const userId = req.userId;
 
-    const { url, fields } = await createPresignedPost(s3Client, {
-        Bucket: 'hkirat-cms',
-        Key: `fiver/${userId}/${Math.random()}/image.jpg`,
-        Conditions: [
-            ['content-length-range', 0, 5 * 1024 * 1024] // 5 MB max
-        ],
-        Expires: 3600
-    })
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    const folder = `pickr/${userId}`;
+
+    const signature = cloudinary.utils.api_sign_request(
+        { timestamp, folder },
+        process.env.CLOUDINARY_API_SECRET ?? ""
+    );
 
     res.json({
-        preSignedUrl: url,
-        fields
-    })
+        timestamp,
+        folder,
+        signature,
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+        apiKey: process.env.CLOUDINARY_API_KEY,
+    });
 
 })
 //signing
-router.post("/signin", async (req, res) => {
+router.post("/signin", async (req: Request, res: Response) => {
     const { publicKey, signature } = req.body;
     const message = new TextEncoder().encode("Sign into mechanical turks");
 

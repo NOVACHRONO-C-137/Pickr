@@ -1,5 +1,7 @@
 import nacl from "tweetnacl";
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { workerMiddleware } from "../middleware";
@@ -13,7 +15,9 @@ const connection = new Connection(process.env.RPC_URL ?? "");
 
 const TOTAL_SUBMISSIONS = 100;
 
-const prismaClient = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prismaClient = new PrismaClient({ adapter });
 
 prismaClient.$transaction(
     async (prisma) => {
